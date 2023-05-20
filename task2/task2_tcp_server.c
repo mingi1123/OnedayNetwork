@@ -1,26 +1,4 @@
-/*
- * MIT License
- *
- * Copyright (c) 2018 Lewis Van Winkle
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+/* 20211670 권민기 */
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -32,16 +10,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <time.h>
-
-#define ISVALIDSOCKET(s) ((s) >= 0)
-#define CLOSESOCKET(s) close(s)
-#define SOCKET int
-#define GETSOCKETERRNO() (errno)
 
 int main() {
 
-    //printf("Configuring local address...\n");
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -49,69 +20,57 @@ int main() {
     hints.ai_flags = AI_PASSIVE;
 
     struct addrinfo *bind_address;
-    getaddrinfo(0, "8080", &hints, &bind_address);
+    getaddrinfo(0, "8080", &hints, &bind_address); //set port
 
-
-    //printf("Creating socket...\n");
-    SOCKET socket_listen;
-    socket_listen = socket(bind_address->ai_family,
-            bind_address->ai_socktype, bind_address->ai_protocol);
-    if (!ISVALIDSOCKET(socket_listen)) {
-        fprintf(stderr, "socket() failed. (%d)\n", GETSOCKETERRNO());
+    // create listen socket
+    int socket_listen;
+    socket_listen = socket(bind_address->ai_family, bind_address->ai_socktype, bind_address->ai_protocol);
+    if (socket_listen < 0) {
+        fprintf(stderr, "socket() failed. (%d)\n", errno);
         return 1;
     }
 
-
-    //printf("Binding socket to local address...\n");
-    if (bind(socket_listen,
-                bind_address->ai_addr, bind_address->ai_addrlen)) {
-        fprintf(stderr, "bind() failed. (%d)\n", GETSOCKETERRNO());
+    // Binding
+    if (bind(socket_listen, bind_address->ai_addr, bind_address->ai_addrlen)) {
+        fprintf(stderr, "bind() failed. (%d)\n", errno);
         return 1;
     }
     freeaddrinfo(bind_address);
 
-
-    //printf("Listening...\n");
+    // Listening;
     if (listen(socket_listen, 10) < 0) {
-        fprintf(stderr, "listen() failed. (%d)\n", GETSOCKETERRNO());
+        fprintf(stderr, "listen() failed. (%d)\n", errno);
         return 1;
     }
 
     fd_set master;
     FD_ZERO(&master);
     FD_SET(socket_listen, &master);
-    SOCKET max_socket = socket_listen;
+    int max_socket = socket_listen;
 
-    printf(">>Server Start\n");
-
+    printf("[ Server Started ]\n");
+    printf("[ Waiting for connections...]\n");
 
     while(1) {
-
-        time_t currentTime = time(NULL);
-		struct tm *localTime = localtime(&currentTime);
-		char datetime[20];
-		strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", localTime);
-
         fd_set reads;
         reads = master;
         if (select(max_socket+1, &reads, 0, 0, 0) < 0) {
-            fprintf(stderr, "select() failed. (%d)\n", GETSOCKETERRNO());
+            fprintf(stderr, "select() failed. (%d)\n", errno);
             return 1;
         }
 
-        SOCKET i;
-        for(i = 1; i <= max_socket; ++i) {
+        for(int i = 1; i <= max_socket; ++i) {
             if (FD_ISSET(i, &reads)) {
+                if (i == socket_listen) { //accept client
 
-                if (i == socket_listen) {
+                    // connect client
                     struct sockaddr_storage client_address;
                     socklen_t client_len = sizeof(client_address);
-                    SOCKET socket_client = accept(socket_listen,
+                    int socket_client = accept(socket_listen,
                             (struct sockaddr*) &client_address,
                             &client_len);
-                    if (!ISVALIDSOCKET(socket_client)) {
-                        fprintf(stderr, "accept() failed. (%d)\n",
-                                GETSOCKETERRNO());
+                    if (socket_client < 0) {
+                        fprintf(stderr, "accept() failed. (%d)\n", errno);
                         return 1;
                     }
 
@@ -124,70 +83,79 @@ int main() {
                             client_len,
                             address_buffer, sizeof(address_buffer), 0, 0,
                             NI_NUMERICHOST);
-
-                    printf(">>Accept connection From Client\n");
-
-                    SOCKET j;
-                    for (j = 1; j <= max_socket; ++j) {
+                    // connection alarm
+                    printf("\n[ Accept connection from client ]\n");
+                    for (int j = 1; j <= max_socket; ++j) {
                         if (FD_ISSET(j, &master)) {
-                            if (j == socket_listen || j == socket_client)
+                            if (j == socket_client || j == i)
                                 continue;
-                            else{
-                                char joinMsg[2000];
-                                sprintf(joinMsg, "사용자가 접속했습니다.\n");
-                                send(j, joinMsg, sizeof(joinMsg), 0);
+                            else {
+                                // send connection alarm ohter clients
+                                char connectmsg[50];
+                                memset(connectmsg, 0, sizeof(connectmsg));
+                                strcpy(connectmsg, "[ Accept connection from client ");
+                                connectmsg[32] = '0' + socket_client - 3;
+                                connectmsg[33] = ' '; connectmsg[34] = ']';
+                                int n = send(j, connectmsg, strlen(connectmsg), 0);
                             }
                         }
                     }
-                }
-                else {
+
+                } else { // about client
                     char read[1024];
                     int bytes_received = recv(i, read, 1024, 0);
-                    printf("From Client: 사용자 %d: %s", i-3, read);
-                    SOCKET k;
+                    read[bytes_received] = '\0';
+
+                    // disconnected client
                     if (bytes_received < 1) {
-                        printf("leave user: 사용자 %d\n", i-3);
-                        for (k = 1; k <= max_socket; ++k) {
-                            if (FD_ISSET(k, &master)) {
-                                if (k == socket_listen || k == i)
-                                    continue;
-                                else{
-                                    char leaveMsg[2000];
-					                sprintf(leaveMsg, "사용자 %d 님이 대화방을 나갔습니다.", i - 3);
-                                    send(k, leaveMsg, sizeof(leaveMsg), 0);
+                        // disconnected alarm (\033[0;31 : 출력 색상 변경 코드입니다.)
+                        printf("\033[0;31mLeave client %d \n\033[0m",i-3);
+                        // send disconnected alarm ohter clients
+                        for (int j = 1; j <= max_socket; ++j) {
+                            if (FD_ISSET(j, &master)) {
+                                if (j != socket_listen && j != i) {
+                                    char leavemsg[30];
+                                    memset(leavemsg, 0, 30);
+                                    strcpy(leavemsg, "Leave client : ");
+                                    leavemsg[14] = '0' + (i-3);
+                                    send(j, leavemsg, strlen(leavemsg), 0);
                                 }
                             }
                         }
                         FD_CLR(i, &master);
-                        CLOSESOCKET(i);
+                        close(i);
                         continue;
                     }
-                
 
-                    SOCKET j;
-                    for (j = 1; j <= max_socket; ++j) {
+                    // print message from client (\033[0;34 : 출력 색상 변경 코드입니다.)
+                    printf("\033[0;34mFrom client %d : %s\n\033[0m",i-3,read);;
+
+                    for (int j = 1; j <= max_socket; ++j) {
                         if (FD_ISSET(j, &master)) {
                             if (j == socket_listen || j == i)
                                 continue;
-                            else{
-                                char Msg[2000];
-					            sprintf(Msg, "[ %s ] 사용자 %d: %s", datetime, i - 3, read);
-                                send(j, Msg, sizeof(Msg), 0);
+                            else {
+                                // send message from other clients
+                                char frommsg[1050];
+                                memset(frommsg, 0, sizeof(frommsg));
+                                strcpy(frommsg, "From client ");
+                                frommsg[11] = '0' + (i-3);
+                                frommsg[12] = ' ';frommsg[13] = ':';frommsg[14] = ' ';
+                                strcat(frommsg, read);
+                                send(j, frommsg, strlen(frommsg), 0);
                             }
                         }
                     }
                 }
                 
-            } //if FD_ISSET
-        } //for i to max_socket
-    } //while(1)
-
-
+            }
+        }
+    }
 
     printf("Closing listening socket...\n");
-    CLOSESOCKET(socket_listen);
+    close(socket_listen);
 
-    printf("Finished.\n");
+    printf("End Server.\n");
 
     return 0;
 }
