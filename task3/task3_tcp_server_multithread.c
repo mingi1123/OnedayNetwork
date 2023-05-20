@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <unistd.h>
 
 void * client_module(void * data)
 {
@@ -29,7 +30,7 @@ int main(int argc, char** argv)
 {
 	int listenSd, connectSd;
 	struct sockaddr_in srvAddr, clntAddr;
-	int clntAddrLen, strLen;
+	int strLen;
 
 	struct sigaction act;
 	pthread_t thread;
@@ -51,7 +52,7 @@ int main(int argc, char** argv)
 	bind(listenSd, (struct sockaddr *) &srvAddr, sizeof(srvAddr));
 	listen(listenSd, 5);
 	
-	clntAddrLen = sizeof(clntAddr);
+	socklen_t clntAddrLen = sizeof(clntAddr);
 	while(1)
 	{
 		connectSd = accept(listenSd,
