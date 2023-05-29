@@ -1,27 +1,3 @@
-/*
- * MIT License
- *
- * Copyright (c) 2018 Lewis Van Winkle
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -38,14 +14,13 @@
 #define GETSOCKETERRNO() (errno)
 
 int main(int argc, char *argv[]) {
-
-
+    // 프로그램 실행 시 호스트네임과 포트 번호를 입력받는다.
     if (argc < 3) {
         fprintf(stderr, "usage: tcp_client hostname port\n");
         return 1;
     }
 
-    //printf("Configuring remote address...\n");
+    // 원격 주소 설정
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_socktype = SOCK_STREAM;
@@ -55,18 +30,15 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
-    //printf("Remote address is: ");
+    // 원격 주소 정보를 문자열로 변환하여 출력
     char address_buffer[100];
     char service_buffer[100];
     getnameinfo(peer_address->ai_addr, peer_address->ai_addrlen,
             address_buffer, sizeof(address_buffer),
             service_buffer, sizeof(service_buffer),
             NI_NUMERICHOST);
-    //printf("%s %s\n", address_buffer, service_buffer);
 
-
-    //printf("Creating socket...\n");
+    // 소켓 생성
     SOCKET socket_peer;
     socket_peer = socket(peer_address->ai_family,
             peer_address->ai_socktype, peer_address->ai_protocol);
@@ -75,8 +47,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
-    //printf("Connecting...\n");
+    // 연결
     if (connect(socket_peer,
                 peer_address->ai_addr, peer_address->ai_addrlen)) {
         fprintf(stderr, "connect() failed. (%d)\n", GETSOCKETERRNO());
@@ -85,10 +56,10 @@ int main(int argc, char *argv[]) {
     freeaddrinfo(peer_address);
 
     printf("채팅 서버에 연결되었습니다.\n");
-    //printf("To send data, enter text followed by enter.\n");
 
+    // 데이터 송수신을 위한 루프
     while(1) {
-
+        // 소켓과 표준 입력을 감시하기 위해 파일 디스크립터 집합 설정
         fd_set reads;
         FD_ZERO(&reads);
         FD_SET(socket_peer, &reads);
@@ -98,12 +69,25 @@ int main(int argc, char *argv[]) {
         timeout.tv_sec = 0;
         timeout.tv_usec = 100000;
 
+        // 파일 디스크립터 감시
         if (select(socket_peer+1, &reads, 0, 0, &timeout) < 0) {
             fprintf(stderr, "select() failed. (%d)\n", GETSOCKETERRNO());
             return 1;
         }
 
+        // 소켓으로부터 수신한 데이터 출력
         if (FD_ISSET(socket_peer, &reads)) {
+            char read[4096];
+            int bytes_received = recv(socket_peer, read, 4096, 0);
+            if (bytes_received < 1) {
+                printf("Connection closed by peer.\n");
+                break;
+            }
+            printf("%s", read);
+        }
+
+        // 표준 입력으로부터 읽은 데이터를 소켓으로 전송
+        if(FD_ISSET(socket_peer, &reads)) {
             char read[4096];
             int bytes_received = recv(socket_peer, read, 4096, 0);
             if (bytes_received < 1) {
