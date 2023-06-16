@@ -31,7 +31,15 @@ typedef struct {
 
 // 블록의 해시 값 계산
 void calculateHash(Block* block, char* hash) {
-   SHA256_CTX ctx;
+    char data[512]; 
+    int dataSize = snprintf(data, sizeof(data), "%s%u", input, nonce);
+    if (dataSize < 0 || dataSize >= sizeof(data)) {
+        // 버퍼 크기 초과 오류 처리
+        fprintf(stderr, "Error: Buffer overflow.\n");
+        exit(1);
+    }
+
+    SHA256_CTX ctx;
     SHA256_Init(&ctx);
     SHA256_Update(&ctx, (uint8_t*)data, dataSize);
     SHA256_Final((uint8_t*)hash, &ctx);
