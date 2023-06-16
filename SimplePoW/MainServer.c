@@ -58,7 +58,7 @@ void* serverThread(void * data) {
     block.timestamp = time(NULL);
     strcpy(block.data, "202116932021167020210604");
     strcpy(block.previousHash, TARGET_PREFIX);
-    calculateHash(block, block->hash);
+    calculateHash(block, block.hash);
     block.nonce = 0;
 
     // 블록 정보 출력
