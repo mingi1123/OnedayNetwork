@@ -52,8 +52,17 @@ void performProofOfWork(Block* block) {
 
     while (1) {
         calculateHash(block, hash);
-        if (strncmp(hash, TARGET_PREFIX, DIFFICULTY_BITS) == 0) {
-            // 정해진 난이도에 해당하는 접두사를 찾았을 경우 종료
+
+        // 해시 값의 시작 비트를 비교하여 확인
+        int valid = 1;
+        for (int i = 0; i < DIFFICULTY_BITS; i++) {
+            if ((hash[i / 8] & (1 << (7 - (i % 8)))) == 0) {
+                valid = 0;
+                break;
+            }
+        }
+
+        if (valid) {
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
             block->nonce = nonce;
             break;
