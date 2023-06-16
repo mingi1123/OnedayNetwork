@@ -52,10 +52,10 @@ void performProofOfWork(Block* block) {
     }
 }
 
-// // 난이도에 해당하는 해시 값의 접두사가 일치하는지 확인
-// int isValidHash(char* hash) {
-//     return strncmp(hash, TARGET_PREFIX, DIFFICULTY_BITS) == 0;
-// }
+// 난이도에 해당하는 해시 값의 접두사가 일치하는지 확인
+int isValidHash(char* hash) {
+    return strncmp(hash, TARGET_PREFIX, DIFFICULTY_BITS) == 0;
+}
 
 // 블록 정보 출력
 void printBlockInfo(Block* block) {
