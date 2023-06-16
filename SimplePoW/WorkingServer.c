@@ -8,6 +8,7 @@
 
 #define CHALLENGE_SIZE 50
 #define HASH_DIFFICULTY 8
+#define PORT 8888
 
 void performPoW(char* challenge, int mainServerSocket) {
     unsigned char hash[SHA256_DIGEST_LENGTH];

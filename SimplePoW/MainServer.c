@@ -6,10 +6,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <openssl/sha.h>
+#include <arpa/inet.h>
 
 #define MAX_WORKERS 10
 #define CHALLENGE_SIZE 50
 #define HASH_DIFFICULTY 8
+#define PORT 8888
 
 void distributeChallenge(char* challenge, int* workers, int numWorkers) {
     // Working Server들에게 challenge 값을 배포
