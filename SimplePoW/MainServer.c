@@ -32,106 +32,58 @@ void handleWorkerResults(int* workers, int numWorkers) {
 int performPoW(const char* challenge) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
     int nonce = 0;
-
-    while (1) {
-        // challenge와 nonce를 합쳐서 입력 데이터 생성
-        char input[CHALLENGE_SIZE + sizeof(int)];
-        snprintf(input, CHALLENGE_SIZE + sizeof(int), "%s%d", challenge, nonce);
-
-        // SHA256 해시 계산
-        SHA256((unsigned char*)input, strlen(input), hash);
-
-        // 해시 값의 난이도 확인
-        int difficultyCount = 0;
-        for (int i = 0; i < HASH_DIFFICULTY / 2; i++) {
-            if (hash[i] == 0) {
-                difficultyCount++;
-            }
-        }
-
-        // 난이도가 충족되면 작업 완료
-        if (difficultyCount >= HASH_DIFFICULTY / 2) {
-            break;
-        }
-
-        nonce++;
-    }
-
-    return nonce;
-}
-
-void measurePoWTime() {
-    clock_t start, end;
-    double cpu_time_used;
-
-    start = clock();
-    // Proof of Work 수행
-    char challenge[CHALLENGE_SIZE];
-    snprintf(challenge, CHALLENGE_SIZE, "학번||학번||학번||이름||이름||이름");
-    int nonce = performPoW(challenge);
-    printf("Proof of Work complete. Nonce: %d\n", nonce);
-
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-
-    printf("PoW Time: %.6f seconds\n", cpu_time_used);
-}
+    //...
 
 int main() {
+    struct sockaddr_in serverAddr, workerAddr;
+    socklen_t addrLen;
+    int listenFd, connFd;
     int workers[MAX_WORKERS];
     int numWorkers = 0;
 
-    // Working Server들과의 연결 설정
-    struct sockaddr_in serverAddr;
-    int serverPort = 8888; // 예시로 포트 번호 8888을 사용
-    for (int i = 0; i < MAX_WORKERS; i++) {
-        // Socket 생성
-        int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        if (sockfd < 0) {
-            perror("Failed to create socket");
-            exit(EXIT_FAILURE);
-        }
-
-        // 서버 주소 설정
-        memset(&serverAddr, 0, sizeof(serverAddr));
-        serverAddr.sin_family = AF_INET;
-        serverAddr.sin_port = htons(serverPort);
-        if (inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr) <= 0) {
-            perror("Invalid address or address not supported");
-            exit(EXIT_FAILURE);
-        }
-
-        // 연결 시도
-        if (connect(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-            perror("Connection failed");
-            exit(EXIT_FAILURE);
-        }
-
-        // 연결 성공
-        workers[i] = sockfd;
-        numWorkers++;
-
-        // 포트 번호 증가 (다음 Worker와 다른 포트 번호 사용)
-        serverPort++;
+    listenFd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listenFd < 0) {
+        perror("Failed to create socket");
+        exit(EXIT_FAILURE);
     }
 
-    // challenge 생성
-    char challenge[CHALLENGE_SIZE];
-    snprintf(challenge, CHALLENGE_SIZE, "학번||학번||학번||이름||이름||이름");
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    // distributeChallenge 함수를 통해 challenge 값 배포
-    distributeChallenge(challenge, workers, numWorkers);
+    if (bind(listenFd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("Failed to bind");
+        exit(EXIT_FAILURE);
+    }
 
-    // handleWorkerResults 함수를 통해 Working Server들의 결과 확인
-    handleWorkerResults(workers, numWorkers);
+    if (listen(listenFd, MAX_WORKERS) < 0) {
+        perror("Failed to listen");
+        exit(EXIT_FAILURE);
+    }
 
-    // Proof of Work 시간 측정
-    measurePoWTime();
+    addrLen = sizeof(workerAddr);
+
+    while (numWorkers < MAX_WORKERS) {
+        connFd = accept(listenFd, (struct sockaddr *)&workerAddr, &addrLen);
+
+        if (connFd >= 0) {
+            printf("Worker %d connected\n", numWorkers + 1);
+            workers[numWorkers] = connFd;
+            numWorkers++;
+        } else {
+            perror("Failed to accept connection");
+        }
+    }
+
+    // challenge 생성, 코드 동일
+    //...
 
     // 연결 종료
     for (int i = 0; i < numWorkers; i++) {
         close(workers[i]);
     }
+    close(listenFd);
 
     return 0;
 }
