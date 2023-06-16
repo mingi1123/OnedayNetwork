@@ -1,139 +1,130 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <openssl/sha.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <openssl/sha.h>
+// 해시 값의 비트 단위로 표현된 난이도
+#define DIFFICULTY_BITS 4
+#define SHA256_BLOCK_SIZE 64
+// 난이도에 해당하는 해시 값의 접두사
+const char* TARGET_PREFIX = "0000";
 
-#define MAX_WORKERS 10
-#define CHALLENGE_SIZE 50
-#define HASH_DIFFICULTY 8
-#define PORT 8888
+// 블록 구조체
+typedef struct {
+    uint32_t index;
+    uint64_t timestamp;
+    char data[256];
+    char previousHash[SHA256_BLOCK_SIZE * 2 + 1];
+    char hash[SHA256_BLOCK_SIZE * 2 + 1];
+    uint32_t nonce;
+} Block;
 
-void distributeChallenge(char* challenge, int* workers, int numWorkers) {
-    // Working Server들에게 challenge 값을 배포
-    for (int i = 0; i < numWorkers; i++) {
-        send(workers[i], challenge, CHALLENGE_SIZE, 0);
-    }
+// 블록의 해시 값 계산
+void calculateHash(Block* block, char* hash) {
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, (uint8_t*)block, sizeof(Block));
+    SHA256_Final(&ctx, (uint8_t*)hash);
 }
 
-void handleWorkerResults(int* workers, int numWorkers) {
-    // Working Server들의 결과 확인
-    for (int i = 0; i < numWorkers; i++) {
-        char result;
-        recv(workers[i], &result, sizeof(result), 0);
-        printf("Received result from Worker %d: %c\n", i + 1, result);
-    }
+// 블록 정보 출력
+void printBlockInfo(Block* block) {
+    printf("Block Index: %u\n", block->index);
+    printf("Timestamp: %llu\n", block->timestamp);
+    printf("Data: %s\n", block->data);
+    printf("Previous Hash: %s\n", block->previousHash);
+    printf("Hash: %s\n", block->hash);
+    printf("Nonce: %u\n", block->nonce);
 }
 
-int performPoW(const char* challenge) {
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    int nonce = 0;
+// 쓰레드 함수
+void* serverThread(void * data) {
+    Block block;
+    client_sockfd = *((int *) data);
 
-    while (1) {
-        // challenge와 nonce를 합쳐서 입력 데이터 생성
-        char input[CHALLENGE_SIZE + sizeof(int)];
-        snprintf(input, CHALLENGE_SIZE + sizeof(int), "%s%d", challenge, nonce);
+    // 블록 정보 설정
+    block.index = 0;
+    block.timestamp = time(NULL);
+    strcpy(block.data, "20211693 변은영");
+    strcpy(block.previousHash, "0000000000000000000000000000000000000000000000000000000000000000");
+    block.nonce = 0;
 
-        // SHA256 해시 계산
-        SHA256((unsigned char*)input, strlen(input), hash);
+    // 블록 정보 출력
+    printBlockInfo(&block);
 
-        // 해시 값의 난이도 확인
-        int difficultyCount = 0;
-        for (int i = 0; i < HASH_DIFFICULTY / 2; i++) {
-            if (hash[i] == 0) {
-                difficultyCount++;
-            }
-        }
-
-        // 난이도가 충족되면 작업 완료
-        if (difficultyCount >= HASH_DIFFICULTY / 2) {
-            break;
-        }
-        nonce++;
+    // 블록 전송
+    if (send(client_sockfd, (void*)&block, sizeof(Block), 0) < 0) {
+        perror("Error sending block");
+        exit(1);
     }
-
-    return nonce;
-}
-
-void measurePoWTime() {
-    clock_t start, end;
-    double cpu_time_used;
-
-    start = clock();
-    // Proof of Work 수행
-    char challenge[CHALLENGE_SIZE];
-    snprintf(challenge, CHALLENGE_SIZE, "2021060420212021167020211693");
-    int nonce = performPoW(challenge);
-    printf("Proof of Work complete. Nonce: %d\n", nonce);
-
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-
-    printf("PoW Time: %.6f seconds\n", cpu_time_used);
+    printf("send\n");
+    // 작업 완료된 블록 수신
+    if (recv(client_sockfd, (void*)&block, sizeof(Block), 0) < 0) {
+        perror("Error receiving block");
+        exit(1);
+    }
+    printf("Data: %s\n", block.data);
+    printf("Block Hash: %s\n", block.hash);
+    printf("Nonce: %u\n", block.nonce);
+    
+    // 클라이언트 소켓 종료
+    close(client_sockfd);
 }
 
 int main() {
-    struct sockaddr_in serverAddr, workerAddr;
-    socklen_t addrLen;
-    int listenFd, connFd;
-    int workers[MAX_WORKERS];
-    int numWorkers = 0;
+    int sockfd, client_sockfd;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_len;
+    pthread_t thread;
+    Block block;
 
-    listenFd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenFd < 0) {
-        perror("Failed to create socket");
-        exit(EXIT_FAILURE);
+    // 서버 소켓 생성
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("Error creating socket");
+        exit(1);
     }
 
-    memset(&serverAddr, 0, sizeof(serverAddr));
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(PORT);
-    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    // 서버 주소 설정
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(8080);
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(listenFd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("Failed to bind");
-        exit(EXIT_FAILURE);
+    // 소켓과 주소 바인딩
+    if (bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Error binding socket");
+        exit(1);
     }
 
-    if (listen(listenFd, MAX_WORKERS) < 0) {
-        perror("Failed to listen");
-        exit(EXIT_FAILURE);
+    // 클라이언트 연결 대기
+    if (listen(sockfd, 5) < 0) {
+        perror("Error listening");
+        exit(1);
     }
 
-    addrLen = sizeof(workerAddr);
-    while (numWorkers < MAX_WORKERS) {
-        connFd = accept(listenFd, (struct sockaddr *)&workerAddr, &addrLen);
-        if (connFd >= 0) {
-            printf("Worker %d connected, IP: %s, PORT: %u\n", numWorkers + 1,
-                    inet_ntoa(workerAddr.sin_addr), ntohs(workerAddr.sin_port));
-            workers[numWorkers] = connFd;
-            numWorkers++;
-        } else {
-            perror("Failed to accept connection");
+    printf("Server started. Waiting for connections...\n");
+
+    while (1) {
+        // 클라이언트 연결 수락
+        client_len = sizeof(client_addr);
+        client_sockfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_len);
+        if (client_sockfd < 0) {
+            perror("Error accepting connection");
+            exit(1);
         }
+        printf("Client connected.\n");
+
+        // 쓰레드 생성
+        pthread_create(&thread, NULL, serverThread, (void *) &client_sockfd);
+        pthread_detach(thread);
     }
 
-    // challenge 생성
-    char challenge[CHALLENGE_SIZE];
-    snprintf(challenge, CHALLENGE_SIZE, "2021060420212021167020211693");
-
-    // distributeChallenge 함수를 통해 challenge 값 배포
-    distributeChallenge(challenge, workers, numWorkers);
-
-    // handleWorkerResults 함수를 통해 Working Server들의 결과 확인
-    handleWorkerResults(workers, numWorkers);
-
-    // Proof of Work 시간 측정
-    measurePoWTime();
-
-    // 연결 종료
-    for (int i = 0; i < numWorkers; i++) {
-        close(workers[i]);
-    }
+    // 서버 소켓 종료
+    close(sockfd);
 
     return 0;
 }
