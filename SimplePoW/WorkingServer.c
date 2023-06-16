@@ -53,6 +53,12 @@ void performProofOfWork(Block* block) {
         }
 
         block->nonce++;
+
+        // 원하는 난이도에 해당하는 해시 값을 찾지 못하고 너무 많은 시도를 한 경우 작업 증명 종료
+        if (block->nonce == UINT32_MAX) {
+            printf("Proof of work failed. Unable to find a matching hash.\n");
+            exit(1);
+        }
     }
 }
 
