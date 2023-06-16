@@ -44,7 +44,6 @@ void printBlockInfo(Block* block) {
     printf("Timestamp: %llu\n", block->timestamp);
     printf("Data: %s\n", block->data);
     printf("Previous Hash: %s\n", block->previousHash);
-    calculateHash(block, block->hash);
     printf("Hash: %s\n", block->hash);
     printf("Nonce: %u\n", block->nonce);
 }
@@ -59,6 +58,7 @@ void* serverThread(void * data) {
     block.timestamp = time(NULL);
     strcpy(block.data, "202116932021167020210604");
     strcpy(block.previousHash, TARGET_PREFIX);
+    calculateHash(block, block->hash);
     block.nonce = 0;
 
     // 블록 정보 출력
