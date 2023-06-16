@@ -10,7 +10,8 @@
 
 #define DIFFICULTY 5
 #define SHA256_BLOCK_SIZE 32 
-#define TARGET_PREFIX "0000000"
+#define TARGET_PREFIX_7 "0000000"
+#define TARGET_PREFIX_8 "00000000"
 
 typedef struct {
     uint32_t index;
@@ -19,6 +20,8 @@ typedef struct {
     char previousHash[SHA256_BLOCK_SIZE + 1];
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
     uint32_t nonce;
+    uint32_t difficulty;
+    char targetPrefix[9];
 } Block;
 
 void calculateHash(Block* block, char* hash) {
@@ -58,7 +61,12 @@ void* serverThread(void * data) {
     block.index = 0;
     block.timestamp = time(NULL);
     strcpy(block.data, "202116932021167020210604");
-    strcpy(block.previousHash, TARGET_PREFIX);
+
+    // Here you should define TARGET_PREFIX and DIFFICULTY based on your requirements
+    strcpy(block.targetPrefix, TARGET_PREFIX_7); // or TARGET_PREFIX_8
+    block.difficulty = strlen(block.targetPrefix);
+
+    strcpy(block.previousHash, block.targetPrefix);
     calculateHash(&block, block.hash);
     block.nonce = 0;
 

@@ -12,6 +12,7 @@
 
 #define DIFFICULTY 5
 #define SHA256_BLOCK_SIZE 32 
+#define TARGET_PREFIX_MAX_LENGTH 9
 
 typedef struct {
     uint32_t index;
@@ -20,6 +21,8 @@ typedef struct {
     char previousHash[SHA256_BLOCK_SIZE + 1];
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
     uint32_t nonce;
+    uint32_t difficulty;
+    char targetPrefix[TARGET_PREFIX_MAX_LENGTH];
 } Block;
 
 void calculateHash(Block* block, char* hash) {
@@ -43,16 +46,13 @@ void calculateHash(Block* block, char* hash) {
 
 void performProofOfWork(Block* block) {
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
-    char target[DIFFICULTY + 1];
-    for (int i = 0; i < DIFFICULTY; i++) {
-        target[i] = '0';
-    }
-    target[DIFFICULTY] = '\0';
+    char target[TARGET_PREFIX_MAX_LENGTH];
+    strcpy(target, block->targetPrefix);
 
     while (1) {
         block->nonce++;
         calculateHash(block, hash);
-        if (strncmp(hash, target, DIFFICULTY) == 0) {
+        if (strncmp(hash, target, block->difficulty) == 0) {
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
             break;
         }
