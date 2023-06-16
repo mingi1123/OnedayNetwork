@@ -22,7 +22,7 @@ typedef struct {
     char previousHash[SHA256_BLOCK_SIZE + 1];
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
     uint32_t nonce;
-    uint32_t block->difficulty];
+    uint32_t difficulty;
     char targetPrefix[TARGET_PREFIX_MAX_LENGTH];
 } Block;
 
