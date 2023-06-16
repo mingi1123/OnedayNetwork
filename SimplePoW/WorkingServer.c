@@ -70,21 +70,28 @@ int main() {
 
     printf("Connected to server.\n");
 
-    // // 블록 정보 설정
-    // block.index = 0;
-    // block.timestamp = time(NULL);
-    // strcpy(block.data, "20211693 변은영");
-    // strcpy(block.previousHash, "0000000000000000000000000000000000000000000000000000000000000000");
-    // block.nonce = 0;
-
     // 작업 완료된 블록 수신
     if (recv(sockfd, (void*)&block, sizeof(Block), 0) < 0) {
         perror("Error receiving block");
         exit(1);
     }
-    printf("Data: %s\n", block.data);
-    printf("Block Hash: %s\n", block.hash);
-    printf("Nonce: %u\n", block.nonce);
+
+    // 작업 증명 수행
+    printf("Start performProofOfWork\n");
+    performProofOfWork(&block);
+    printf("End performProofOfWork\n");
+
+     // 작업 완료된 블록 전송
+    if (send(sockfd, (void*)&block, sizeof(Block), 0) < 0) {
+        perror("Error sending block");
+        exit(1);
+    }
+
+    printf("Block sent.\n");
+
+    // 블록 정보 출력
+    printBlockInfo(&block);
+
 
     // 소켓 종료
     close(sockfd);
