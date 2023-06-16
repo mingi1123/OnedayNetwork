@@ -32,7 +32,7 @@ typedef struct {
 // 블록의 해시 값 계산
 void calculateHash(Block* block, char* hash) {
     char data[512]; 
-    int dataSize = snprintf(data, sizeof(data), "%s%u", input, nonce);
+    int dataSize = snprintf(data, sizeof(data), "%s%u", block->data, block->nonce);
     if (dataSize < 0 || dataSize >= sizeof(data)) {
         // 버퍼 크기 초과 오류 처리
         fprintf(stderr, "Error: Buffer overflow.\n");
