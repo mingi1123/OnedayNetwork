@@ -7,10 +7,10 @@
 #include <pthread.h>
 #include <openssl/sha.h>
 // 해시 값의 비트 단위로 표현된 난이도
-#define DIFFICULTY_BITS 4
-#define SHA256_BLOCK_SIZE 64
+#define DIFFICULTY_BITS 7
+#define SHA256_BLOCK_SIZE 32
 // 난이도에 해당하는 해시 값의 접두사
-const char* TARGET_PREFIX = "0000";
+const char* TARGET_PREFIX = "0000000";
 
 // 블록 구조체
 typedef struct {
@@ -48,8 +48,8 @@ void* serverThread(void * data) {
     // 블록 정보 설정
     block.index = 0;
     block.timestamp = time(NULL);
-    strcpy(block.data, "20211693 변은영");
-    strcpy(block.previousHash, "0000000000000000000000000000000000000000000000000000000000000000");
+    strcpy(block.data, "202116932021167020210604");
+    strcpy(block.previousHash, TARGET_PREFIX);
     block.nonce = 0;
 
     // 블록 정보 출력

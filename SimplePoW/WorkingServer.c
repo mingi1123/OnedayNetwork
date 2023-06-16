@@ -7,16 +7,17 @@
 #include <stddef.h>
 #include <time.h>
 #include <openssl/sha.h>
+
 // 서버 주소
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
-// // 해시 값의 비트 단위로 표현된 난이도
-#define DIFFICULTY_BITS 4
-#define SHA256_BLOCK_SIZE 64
+// 해시 값의 비트 단위로 표현된 난이도
+#define DIFFICULTY_BITS 7
+#define SHA256_BLOCK_SIZE 32
 
-// // 난이도에 해당하는 해시 값의 접두사
-const char* TARGET_PREFIX = "0000";
+// 난이도에 해당하는 해시 값의 접두사
+const char* TARGET_PREFIX = "0000000";
 
 // 블록 구조체
 typedef struct {
@@ -33,28 +34,26 @@ void calculateHash(Block* block, char* hash) {
     SHA256_CTX ctx;
     SHA256_Init(&ctx);
     SHA256_Update(&ctx, (uint8_t*)block, sizeof(Block));
-    SHA256_Final(&ctx, (uint8_t*)hash);
+    SHA256_Final((uint8_t*)hash, &ctx);
 }
 
 // 작업 증명을 수행하는 함수
 void performProofOfWork(Block* block) {
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
+    char target[SHA256_BLOCK_SIZE * 2 + 1];
+    memset(target, '0', DIFFICULTY_BITS);
+    target[DIFFICULTY_BITS] = '\0';
 
     while (1) {
         calculateHash(block, hash);
 
-        if (isValidHash(hash)) {
+        if (strncmp(hash, target, DIFFICULTY_BITS) == 0) {
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
             return;
         }
 
         block->nonce++;
     }
-}
-
-// 난이도에 해당하는 해시 값의 접두사가 일치하는지 확인
-int isValidHash(char* hash) {
-    return strncmp(hash, TARGET_PREFIX, DIFFICULTY_BITS) == 0;
 }
 
 // 블록 정보 출력
@@ -107,7 +106,7 @@ int main() {
     performProofOfWork(&block);
     printf("End performProofOfWork\n");
 
-     // 작업 완료된 블록 전송
+    // 작업 완료된 블록 전송
     if (send(sockfd, (void*)&block, sizeof(Block), 0) < 0) {
         perror("Error sending block");
         exit(1);
@@ -117,7 +116,6 @@ int main() {
 
     // 블록 정보 출력
     printBlockInfo(&block);
-
 
     // 소켓 종료
     close(sockfd);
