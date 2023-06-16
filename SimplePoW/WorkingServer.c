@@ -1,88 +1,93 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <stddef.h>
+#include <time.h>
 #include <openssl/sha.h>
+// 서버 주소
+#define SERVER_IP "127.0.0.1"
+#define SERVER_PORT 8080
 
-#define CHALLENGE_SIZE 50
-#define HASH_DIFFICULTY 8
-#define PORT 8888
+// // 해시 값의 비트 단위로 표현된 난이도
+// #define DIFFICULTY_BITS 4
+#define SHA256_BLOCK_SIZE 64
 
-void performPoW(char* challenge, int mainServerSocket) {
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    int nonce = 0;
+// // 난이도에 해당하는 해시 값의 접두사
+// const char* TARGET_PREFIX = "0000";
 
-    while (1) {
-        // challenge와 nonce를 합쳐서 입력 데이터 생성
-        char input[CHALLENGE_SIZE + sizeof(int)];
-        snprintf(input, CHALLENGE_SIZE + sizeof(int), "%s%d", challenge, nonce);
+// 블록 구조체
+typedef struct {
+    uint32_t index;
+    uint64_t timestamp;
+    char data[256];
+    char previousHash[SHA256_BLOCK_SIZE * 2 + 1];
+    char hash[SHA256_BLOCK_SIZE * 2 + 1];
+    uint32_t nonce;
+} Block;
 
-        // SHA256 해시 계산
-        SHA256((unsigned char*)input, strlen(input), hash);
-
-        // 해시 값의 난이도 확인
-        int difficultyCount = 0;
-        for (int i = 0; i < HASH_DIFFICULTY / 2; i++) {
-            if (hash[i] == 0) {
-                difficultyCount++;
-            }
-        }
-
-        // 난이도가 충족되면 작업 완료
-        if (difficultyCount >= HASH_DIFFICULTY / 2) {
-            break;
-        }
-
-        nonce++;
-
-        // 결과 전송
-        send(mainServerSocket, &nonce, sizeof(nonce), 0);
-        printf("Nonce sent: %d\n", nonce);
-    }
-
-    // 결과 전송
-    send(mainServerSocket, &nonce, sizeof(nonce), 0);
+// 블록의 해시 값 계산
+void calculateHash(Block* block, char* hash) {
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, (uint8_t*)block, sizeof(Block));
+    SHA256_Final(&ctx, (uint8_t*)hash);
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Usage: %s SERVER_IP\n", argv[0]);
+// // 난이도에 해당하는 해시 값의 접두사가 일치하는지 확인
+// int isValidHash(char* hash) {
+//     return strncmp(hash, TARGET_PREFIX, DIFFICULTY_BITS) == 0;
+// }
+
+int main() {
+    int sockfd;
+    struct sockaddr_in server_addr;
+    Block block;
+
+    // 서버 소켓 생성
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("Error creating socket");
         exit(1);
     }
 
-    int mainServerSocket = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(PORT); // Main Server의 포트 번호
-    inet_pton(AF_INET, argv[1], &serverAddress.sin_addr); // IP 주소 할당
-    memset(serverAddress.sin_zero, '\0', sizeof(serverAddress.sin_zero));
-
-    if (connect(mainServerSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
-        perror("Could not connect to server");
+    // 서버 주소 설정
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(SERVER_PORT);
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+        perror("Invalid address");
         exit(1);
     }
 
-    printf("Connected to Main server\n");
-
-    // challenge 값 수신
-    char challenge[CHALLENGE_SIZE];
-    recv(mainServerSocket, challenge, CHALLENGE_SIZE, 0);
-
-    // 난이도 확인
-    int difficulty = strlen(challenge) - 2;
-    if (difficulty < HASH_DIFFICULTY) {
-        // 난이도가 충족되지 않으면 종료
-        close(mainServerSocket);
-        return 0;
+    // 서버에 연결
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Error connecting to server");
+        exit(1);
     }
 
-    // Proof of Work 수행
-    performPoW(challenge, mainServerSocket);
+    printf("Connected to server.\n");
 
-    // Main Server와의 연결 종료
-    close(mainServerSocket);
+    // // 블록 정보 설정
+    // block.index = 0;
+    // block.timestamp = time(NULL);
+    // strcpy(block.data, "20211693 변은영");
+    // strcpy(block.previousHash, "0000000000000000000000000000000000000000000000000000000000000000");
+    // block.nonce = 0;
+
+    // 작업 완료된 블록 수신
+    if (recv(sockfd, (void*)&block, sizeof(Block), 0) < 0) {
+        perror("Error receiving block");
+        exit(1);
+    }
+    printf("Data: %s\n", block.data);
+    printf("Block Hash: %s\n", block.hash);
+    printf("Nonce: %u\n", block.nonce);
+
+    // 소켓 종료
+    close(sockfd);
 
     return 0;
 }
