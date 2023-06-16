@@ -31,9 +31,9 @@ typedef struct {
 
 // 블록의 해시 값 계산
 void calculateHash(Block* block, char* hash) {
-    SHA256_CTX ctx;
+   SHA256_CTX ctx;
     SHA256_Init(&ctx);
-    SHA256_Update(&ctx, (uint8_t*)block, sizeof(Block));
+    SHA256_Update(&ctx, (uint8_t*)data, dataSize);
     SHA256_Final((uint8_t*)hash, &ctx);
 }
 
