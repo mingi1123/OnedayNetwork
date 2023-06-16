@@ -46,13 +46,16 @@ void calculateHash(Block* block, char* hash) {
 
 void performProofOfWork(Block* block) {
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
-    char target[TARGET_PREFIX_MAX_LENGTH];
-    strcpy(target, block->targetPrefix);
+    char target[DIFFICULTY + 1];
+    for (int i = 0; i < DIFFICULTY; i++) {
+        target[i] = '0';
+    }
+    target[DIFFICULTY] = '\0';
 
     while (1) {
         block->nonce++;
         calculateHash(block, hash);
-        if (strncmp(hash, target, block->difficulty) == 0) {
+        if (strncmp(hash, target, DIFFICULTY) == 0) {
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
             break;
         }
