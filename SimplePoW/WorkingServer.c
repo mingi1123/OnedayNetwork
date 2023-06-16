@@ -24,7 +24,7 @@ typedef struct {
     uint32_t index;
     uint64_t timestamp;
     char data[256];
-    char previousHash[SHA256_BLOCK_SIZE * 2 + 1];
+    char previousHash[SHA256_BLOCK_SIZE + 1];
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
     uint32_t nonce;
 } Block;
