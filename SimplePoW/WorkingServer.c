@@ -110,11 +110,11 @@ int main() {
     printBlockInfo(&block);
 
     // 작업 증명 수행
-    printf("Start performProofOfWork\n");
-    block.timestamp = time(NULL); // start timestamp
+    time_t start_time = time(NULL);
+    printf("Start performProofOfWork at %s\n", ctime(&start_time));
     performProofOfWork(&block);
-    printf("End performProofOfWork\n");
-    block.timestamp = time(NULL) - block.timestamp; // end tiemstamp
+    time_t end_time = time(NULL);
+    printf("End performProofOfWork at %s\n", ctime(&end_time));
 
     // 작업 완료된 블록 전송
     if (send(sockfd, (void*)&block, sizeof(Block), 0) < 0) {

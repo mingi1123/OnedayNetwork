@@ -110,9 +110,6 @@ void* serverThread(void * data) {
     printf("Received block.\n");
     printBlockInfo(&block);
 
-    // 시간 측정 종료
-    block.timestamp = time(NULL) - block.timestamp; 
-
     // 클라이언트 소켓 종료
     close(client_sockfd);
 }
