@@ -60,12 +60,33 @@ void* serverThread(void * data) {
     // 블록 정보 설정
     block.index = 0;
     block.timestamp = time(NULL);
-    strcpy(block.data, "202116932021167020210604");
 
-    // Here you should define TARGET_PREFIX and DIFFICULTY based on your requirements
-    strcpy(block.targetPrefix, TARGET_PREFIX_7); // or TARGET_PREFIX_8
+    int challenge, choice;
+    printf("Challenge (7 or 8): ");
+    scanf("%d", &challenge);
+
+    if (challenge == 7) {
+        strcpy(block.targetPrefix, TARGET_PREFIX_7);
+    } else if (challenge == 8) {
+        strcpy(block.targetPrefix, TARGET_PREFIX_8);
+    } else {
+        printf("Invalid challenge. Defaulting to 7.\n");
+        strcpy(block.targetPrefix, TARGET_PREFIX_7);
+    }
+
+    printf("ID or Name (1 or 2): ");
+    scanf("%d", &choice);
+
+    if (choice == 1) {
+        strcpy(block.data, "202116932021167020210604");
+    } else if (choice == 2) {
+        strcpy(block.data, "김민지권민기변은영");
+    } else {
+        printf("Invalid choice. Defaulting to ID.\n");
+        strcpy(block.data, "202116932021167020210604");
+    }
+
     block.difficulty = strlen(block.targetPrefix);
-
     strcpy(block.previousHash, block.targetPrefix);
     calculateHash(&block, block.hash);
     block.nonce = 0;
@@ -78,16 +99,17 @@ void* serverThread(void * data) {
         perror("Error sending block");
         exit(1);
     }
-    printf("send\n");
+    printf("Block sent.\n");
+
     // 작업 완료된 블록 수신
     if (recv(client_sockfd, (void*)&block, sizeof(Block), 0) < 0) {
         perror("Error receiving block");
         exit(1);
     }
-    printf("Data: %s\n", block.data);
-    printf("Block Hash: %s\n", block.hash);
-    printf("Nonce: %u\n", block.nonce);
-    
+
+    printf("Received block.\n");
+    printBlockInfo(&block);
+
     // 클라이언트 소켓 종료
     close(client_sockfd);
 }
