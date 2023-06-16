@@ -67,7 +67,7 @@ void measurePoWTime() {
     start = clock();
     // Proof of Work 수행
     char challenge[CHALLENGE_SIZE];
-    snprintf(challenge, CHALLENGE_SIZE, "학번||학번||학번||이름||이름||이름");
+    snprintf(challenge, CHALLENGE_SIZE, "2021060420212021167020211693");
     int nonce = performPoW(challenge);
     printf("Proof of Work complete. Nonce: %d\n", nonce);
 
