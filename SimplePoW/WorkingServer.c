@@ -111,8 +111,10 @@ int main() {
 
     // 작업 증명 수행
     printf("Start performProofOfWork\n");
+    block.timestamp = time(NULL); // start timestamp
     performProofOfWork(&block);
     printf("End performProofOfWork\n");
+    block.timestamp = time(NULL) - block.timestamp; // end tiemstamp
 
     // 작업 완료된 블록 전송
     if (send(sockfd, (void*)&block, sizeof(Block), 0) < 0) {
