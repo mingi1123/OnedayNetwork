@@ -110,11 +110,17 @@ int main() {
     printBlockInfo(&block);
 
     // 작업 증명 수행
-    time_t start_time = time(NULL);
-    printf("Start performProofOfWork at %s\n", ctime(&start_time));
+    struct timeval start_time, end_time;
+    gettimeofday(&start_time, NULL);
+    printf("Start performProofOfWork at %ld.%06ld\n", start_time.tv_sec, start_time.tv_usec);
     performProofOfWork(&block);
-    time_t end_time = time(NULL);
-    printf("End performProofOfWork at %s\n", ctime(&end_time));
+    gettimeofday(&end_time, NULL);
+    printf("End performProofOfWork at %ld.%06ld\n", end_time.tv_sec, end_time.tv_usec);
+
+    // 소요시간 출력 (초.마이크로초)
+    double elapsed_time = (end_time.tv_sec - start_time.tv_sec) + 
+                          ((end_time.tv_usec - start_time.tv_usec)/1000000.0);
+    printf("Elapsed time for performProofOfWork: %f seconds\n", elapsed_time);
 
     // 작업 완료된 블록 전송
     if (send(sockfd, (void*)&block, sizeof(Block), 0) < 0) {
