@@ -36,6 +36,22 @@ void calculateHash(Block* block, char* hash) {
     SHA256_Final(&ctx, (uint8_t*)hash);
 }
 
+// 작업 증명을 수행하는 함수
+void performProofOfWork(Block* block) {
+    char hash[SHA256_BLOCK_SIZE * 2 + 1];
+
+    while (1) {
+        calculateHash(block, hash);
+
+        if (isValidHash(hash)) {
+            strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
+            return;
+        }
+
+        block->nonce++;
+    }
+}
+
 // // 난이도에 해당하는 해시 값의 접두사가 일치하는지 확인
 // int isValidHash(char* hash) {
 //     return strncmp(hash, TARGET_PREFIX, DIFFICULTY_BITS) == 0;
