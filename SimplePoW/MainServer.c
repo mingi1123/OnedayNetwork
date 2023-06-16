@@ -6,9 +6,11 @@
 #include <unistd.h>
 #include <time.h>
 #include <openssl/sha.h>
+#include <pthread.h> // add this
 
 #define DIFFICULTY 5
 #define SHA256_BLOCK_SIZE 32 
+#define TARGET_PREFIX "0000000"
 
 typedef struct {
     uint32_t index;
