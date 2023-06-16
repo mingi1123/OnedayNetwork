@@ -78,10 +78,6 @@ void measurePoWTime() {
 }
 
 int main() {
-    
-    int workers[MAX_WORKERS];
-    int numWorkers = 0;
-
     struct sockaddr_in serverAddr, workerAddr;
     socklen_t addrLen;
     int listenFd, connFd;
@@ -93,7 +89,7 @@ int main() {
         perror("Failed to create socket");
         exit(EXIT_FAILURE);
     }
-    
+
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(PORT);
@@ -110,7 +106,6 @@ int main() {
     }
 
     addrLen = sizeof(workerAddr);
-
     while (numWorkers < MAX_WORKERS) {
         connFd = accept(listenFd, (struct sockaddr *)&workerAddr, &addrLen);
 
