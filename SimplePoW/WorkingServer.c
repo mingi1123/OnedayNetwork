@@ -4,22 +4,15 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <stddef.h>
 #include <time.h>
 #include <openssl/sha.h>
 
-// 서버 주소
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
-// 해시 값의 비트 단위로 표현된 난이도
-#define DIFFICULTY_BITS 7
-#define SHA256_BLOCK_SIZE 32
+#define DIFFICULTY 5
+#define SHA256_BLOCK_SIZE 32 
 
-// 난이도에 해당하는 해시 값의 접두사
-const char* TARGET_PREFIX = "0000000";
-
-// 블록 구조체
 typedef struct {
     uint32_t index;
     uint64_t timestamp;
@@ -29,12 +22,10 @@ typedef struct {
     uint32_t nonce;
 } Block;
 
-// 블록의 해시 값 계산
 void calculateHash(Block* block, char* hash) {
     char data[512]; 
     int dataSize = snprintf(data, sizeof(data), "%s%u", block->data, block->nonce);
     if (dataSize < 0 || dataSize >= sizeof(data)) {
-        // 버퍼 크기 초과 오류 처리
         fprintf(stderr, "Error: Buffer overflow.\n");
         exit(1);
     }
@@ -42,36 +33,32 @@ void calculateHash(Block* block, char* hash) {
     SHA256_CTX ctx;
     SHA256_Init(&ctx);
     SHA256_Update(&ctx, (uint8_t*)data, dataSize);
-    SHA256_Final((uint8_t*)hash, &ctx);
+    unsigned char hashRaw[SHA256_DIGEST_LENGTH];
+    SHA256_Final(hashRaw, &ctx);
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+        sprintf(hash + (i * 2), "%02x", hashRaw[i]);
+    }
+    hash[SHA256_BLOCK_SIZE * 2] = '\0';
 }
 
-// Proof of Work 수행
 void performProofOfWork(Block* block) {
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
-    uint32_t nonce = 0;
+    char target[DIFFICULTY + 1];
+    for (int i = 0; i < DIFFICULTY; i++) {
+        target[i] = '0';
+    }
+    target[DIFFICULTY] = '\0';
 
     while (1) {
+        block->nonce++;
         calculateHash(block, hash);
-
-        // 해시 값의 시작 비트를 비교하여 확인
-        int valid = 1;
-        for (int i = 0; i < DIFFICULTY_BITS; i++) {
-            if ((hash[i / 8] & (1 << (7 - (i % 8)))) == 0) {
-                valid = 0;
-                break;
-            }
-        }
-
-        if (valid) {
+        if (strncmp(hash, target, DIFFICULTY) == 0) {
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
-            block->nonce = nonce;
             break;
         }
-        nonce++;
     }
 }
 
-// 블록 정보 출력
 void printBlockInfo(Block* block) {
     printf("Block Index: %u\n", block->index);
     printf("Timestamp: %llu\n", block->timestamp);
