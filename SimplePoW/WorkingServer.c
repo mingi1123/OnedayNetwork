@@ -12,11 +12,11 @@
 #define SERVER_PORT 8080
 
 // // 해시 값의 비트 단위로 표현된 난이도
-// #define DIFFICULTY_BITS 4
+#define DIFFICULTY_BITS 4
 #define SHA256_BLOCK_SIZE 64
 
 // // 난이도에 해당하는 해시 값의 접두사
-// const char* TARGET_PREFIX = "0000";
+const char* TARGET_PREFIX = "0000";
 
 // 블록 구조체
 typedef struct {
