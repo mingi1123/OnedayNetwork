@@ -44,7 +44,7 @@ void printBlockInfo(Block* block) {
     printf("Timestamp: %llu\n", block->timestamp);
     printf("Data: %s\n", block->data);
     printf("Previous Hash: %s\n", block->previousHash);
-    calculateHash(block, TARGET_PREFIX);
+    calculateHash(block, block->hash);
     printf("Hash: %s\n", block->hash);
     printf("Nonce: %u\n", block->nonce);
 }
