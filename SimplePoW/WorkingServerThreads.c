@@ -6,12 +6,14 @@
 #include <unistd.h>
 #include <time.h>
 #include <openssl/sha.h>
+#include <pthread.h>
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
 #define SHA256_BLOCK_SIZE 32 
 #define TARGET_PREFIX_MAX_LENGTH 9
+#define NUM_THREADS 4
 
 typedef struct {
     uint32_t index;
@@ -43,7 +45,18 @@ void calculateHash(Block* block, char* hash) {
     hash[SHA256_BLOCK_SIZE * 2] = '\0';
 }
 
-void performProofOfWork(Block* block) {
+typedef struct {
+    Block *block;
+    uint32_t start_nonce;
+    uint32_t end_nonce;
+} ThreadArg;
+
+void* performProofOfWorkThread(void* arg) {
+    ThreadArg* thread_arg = (ThreadArg*)arg;
+    Block* block = thread_arg->block;
+    uint32_t start_nonce = thread_arg->start_nonce;
+    uint32_t end_nonce = thread_arg->end_nonce;
+
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
     char target[block->difficulty + 1];  // Use difficulty from block
     for (int i = 0; i < block->difficulty; i++) {
@@ -51,12 +64,39 @@ void performProofOfWork(Block* block) {
     }
     target[block->difficulty] = '\0';  // Set end of target string
 
-    while (1) {
-        block->nonce++;
+    for (uint32_t nonce = start_nonce; nonce < end_nonce; nonce++) {
+        block->nonce = nonce;
         calculateHash(block, hash);
         if (strncmp(hash, target, block->difficulty) == 0) {
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
             break;
+        }
+    }
+
+    return NULL;
+}
+
+void performProofOfWork(Block* block) {
+    pthread_t threads[NUM_THREADS];
+    ThreadArg thread_args[NUM_THREADS];
+
+    // Split the nonce space evenly between threads
+    uint32_t nonce_range = UINT32_MAX / NUM_THREADS;
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+        thread_args[i].block = block;
+        thread_args[i].start_nonce = i * nonce_range;
+        thread_args[i].end_nonce = (i + 1) * nonce_range;
+        if (pthread_create(&threads[i], NULL, performProofOfWorkThread, &thread_args[i]) != 0) {
+            perror("Error creating thread");
+            exit(1);
+        }
+    }
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+        if (pthread_join(threads[i], NULL) != 0) {
+            perror("Error joining thread");
+            exit(1);
         }
     }
 }
