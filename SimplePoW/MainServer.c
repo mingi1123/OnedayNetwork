@@ -43,7 +43,7 @@ void printBlockInfo(Block* block) {
 // 쓰레드 함수
 void* serverThread(void * data) {
     Block block;
-    client_sockfd = *((int *) data);
+    int client_sockfd = *((int *) data);
 
     // 블록 정보 설정
     block.index = 0;
