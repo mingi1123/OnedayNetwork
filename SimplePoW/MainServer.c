@@ -53,7 +53,6 @@ int performPoW(const char* challenge) {
         if (difficultyCount >= HASH_DIFFICULTY / 2) {
             break;
         }
-
         nonce++;
     }
 
@@ -106,11 +105,11 @@ int main() {
     }
 
     addrLen = sizeof(workerAddr);
-    while (numWorkers < MAX_WORKERS) {
+    wwhile (numWorkers < MAX_WORKERS) {
         connFd = accept(listenFd, (struct sockaddr *)&workerAddr, &addrLen);
-
         if (connFd >= 0) {
-            printf("Worker %d connected\n", numWorkers + 1);
+            printf("Worker %d connected, IP: %s, PORT: %u\n", numWorkers + 1,
+                    inet_ntoa(workerAddr.sin_addr), ntohs(workerAddr.sin_port));
             workers[numWorkers] = connFd;
             numWorkers++;
         } else {

@@ -36,22 +36,35 @@ void performPoW(char* challenge, int mainServerSocket) {
         }
 
         nonce++;
+
+        // 결과 전송
+        send(mainServerSocket, &nonce, sizeof(nonce), 0);
+        printf("Nonce sent: %d\n", nonce);
     }
 
     // 결과 전송
     send(mainServerSocket, &nonce, sizeof(nonce), 0);
 }
 
-int main() {
-    // Main Server와의 연결 설정
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        printf("Usage: %s SERVER_IP\n", argv[0]);
+        exit(1);
+    }
+
     int mainServerSocket = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(PORT); // Main Server의 포트 번호
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    inet_pton(AF_INET, argv[1], &serverAddress.sin_addr); // IP 주소 할당
     memset(serverAddress.sin_zero, '\0', sizeof(serverAddress.sin_zero));
 
-    connect(mainServerSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
+    if (connect(mainServerSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
+        perror("Could not connect to server");
+        exit(1);
+    }
+
+    printf("Connected to Main server\n");
 
     // challenge 값 수신
     char challenge[CHALLENGE_SIZE];
