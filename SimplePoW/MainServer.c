@@ -120,7 +120,7 @@ int main() {
 
     // challenge 생성
     char challenge[CHALLENGE_SIZE];
-    snprintf(challenge, CHALLENGE_SIZE, "학번||학번||학번||이름||이름||이름");
+    snprintf(challenge, CHALLENGE_SIZE, "2021060420212021167020211693");
 
     // distributeChallenge 함수를 통해 challenge 값 배포
     distributeChallenge(challenge, workers, numWorkers);
