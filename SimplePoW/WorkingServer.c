@@ -107,6 +107,9 @@ int main() {
         exit(1);
     }
 
+    // 블록 정보 출력
+    printBlockInfo(&block);
+
     // 작업 증명 수행
     printf("Start performProofOfWork\n");
     performProofOfWork(&block);
