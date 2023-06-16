@@ -57,6 +57,16 @@ void performProofOfWork(Block* block) {
 //     return strncmp(hash, TARGET_PREFIX, DIFFICULTY_BITS) == 0;
 // }
 
+// 블록 정보 출력
+void printBlockInfo(Block* block) {
+    printf("Block Index: %u\n", block->index);
+    printf("Timestamp: %llu\n", block->timestamp);
+    printf("Data: %s\n", block->data);
+    printf("Previous Hash: %s\n", block->previousHash);
+    printf("Hash: %s\n", block->hash);
+    printf("Nonce: %u\n", block->nonce);
+}
+
 int main() {
     int sockfd;
     struct sockaddr_in server_addr;
