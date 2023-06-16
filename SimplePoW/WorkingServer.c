@@ -45,28 +45,20 @@ void calculateHash(Block* block, char* hash) {
     SHA256_Final((uint8_t*)hash, &ctx);
 }
 
-// 작업 증명을 수행하는 함수
+// Proof of Work 수행
 void performProofOfWork(Block* block) {
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
-    char target[SHA256_BLOCK_SIZE * 2 + 1];
-    memset(target, '0', DIFFICULTY_BITS);
-    target[DIFFICULTY_BITS] = '\0';
+    uint32_t nonce = 0;
 
     while (1) {
         calculateHash(block, hash);
-
-        if (strncmp(hash, target, DIFFICULTY_BITS) == 0) {
+        if (strncmp(hash, TARGET_PREFIX, DIFFICULTY_BITS) == 0) {
+            // 정해진 난이도에 해당하는 접두사를 찾았을 경우 종료
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
-            return;
+            block->nonce = nonce;
+            break;
         }
-
-        block->nonce++;
-
-        // 원하는 난이도에 해당하는 해시 값을 찾지 못하고 너무 많은 시도를 한 경우 작업 증명 종료
-        if (block->nonce == UINT32_MAX) {
-            printf("Proof of work failed. Unable to find a matching hash.\n");
-            exit(1);
-        }
+        nonce++;
     }
 }
 
