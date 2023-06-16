@@ -105,7 +105,7 @@ int main() {
     }
 
     addrLen = sizeof(workerAddr);
-    wwhile (numWorkers < MAX_WORKERS) {
+    while (numWorkers < MAX_WORKERS) {
         connFd = accept(listenFd, (struct sockaddr *)&workerAddr, &addrLen);
         if (connFd >= 0) {
             printf("Worker %d connected, IP: %s, PORT: %u\n", numWorkers + 1,
