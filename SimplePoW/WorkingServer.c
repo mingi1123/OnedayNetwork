@@ -64,7 +64,7 @@ void performProofOfWork(Block* block) {
 
 void printBlockInfo(Block* block) {
     printf("Block Index: %u\n", block->index);
-    printf("Timestamp: %llu\n", block->timestamp);
+    printf("Timestamp: %lu\n", block->timestamp);
     printf("Data: %s\n", block->data);
     printf("Previous Hash: %s\n", block->previousHash);
     printf("Hash: %s\n", block->hash);
