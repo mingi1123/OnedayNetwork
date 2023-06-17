@@ -11,8 +11,9 @@
 #define SERVER_PORT 8080
 
 #define SHA256_BLOCK_SIZE 32 
-#define TARGET_PREFIX_MAX_LENGTH 9
+#define TARGET_PREFIX_MAX_LENGTH 9 // 챌린지 최대길이
 
+// Block 구조체
 typedef struct {
     uint32_t index;
     uint64_t timestamp;
@@ -24,6 +25,7 @@ typedef struct {
     char targetPrefix[TARGET_PREFIX_MAX_LENGTH];
 } Block;
 
+// 해시 계산
 void calculateHash(Block* block, char* hash) {
     char data[512]; 
     int dataSize = snprintf(data, sizeof(data), "%s%u", block->data, block->nonce);
@@ -43,6 +45,7 @@ void calculateHash(Block* block, char* hash) {
     hash[SHA256_BLOCK_SIZE * 2] = '\0';
 }
 
+// Pow
 void performProofOfWork(Block* block) {
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
     char target[block->difficulty + 1];  // Use difficulty from block
@@ -61,6 +64,7 @@ void performProofOfWork(Block* block) {
     }
 }
 
+// 블록 정보 출력
 void printBlockInfo(Block* block) {
     printf("Block Index: %u\n", block->index);
     printf("Timestamp: %lu\n", block->timestamp);

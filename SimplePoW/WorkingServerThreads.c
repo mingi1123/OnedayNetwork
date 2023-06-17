@@ -18,9 +18,10 @@
 #define TARGET_PREFIX_MAX_LENGTH 9
 #define NUM_THREADS 12
 
-atomic_bool finished = false;
+atomic_bool finished = false; // 쓰레드 종료 조건
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Block 구조체
 typedef struct {
     uint32_t index;
     uint64_t timestamp;
@@ -32,6 +33,7 @@ typedef struct {
     char targetPrefix[TARGET_PREFIX_MAX_LENGTH];
 } Block;
 
+// 해시 계산
 void calculateHash(Block* block, uint32_t nonce, char* hash) {
     char data[512]; 
     int dataSize = snprintf(data, sizeof(data), "%s%u", block->data, nonce);
@@ -51,12 +53,14 @@ void calculateHash(Block* block, uint32_t nonce, char* hash) {
     hash[SHA256_BLOCK_SIZE * 2] = '\0';
 }
 
+// 쓰레드 arg 구조체
 typedef struct {
     Block *block;
     uint32_t start_nonce;
     uint32_t end_nonce;
 } ThreadArg;
 
+// 쓰레드 함수
 void* performProofOfWorkThread(void* arg) {
     ThreadArg* thread_arg = (ThreadArg*)arg;
     Block* block = thread_arg->block;
@@ -64,27 +68,27 @@ void* performProofOfWorkThread(void* arg) {
     uint32_t end_nonce = thread_arg->end_nonce;
 
     char hash[SHA256_BLOCK_SIZE * 2 + 1];
-    char target[block->difficulty + 1];  // Use difficulty from block
+    char target[block->difficulty + 1]; // Block의 난이도 이용
     for (int i = 0; i < block->difficulty; i++) {
         target[i] = '0';
     }
-    target[block->difficulty] = '\0';  // Set end of target string
+    target[block->difficulty] = '\0'; 
 
     for (uint32_t nonce = start_nonce; nonce < end_nonce; nonce++) {
         if (atomic_load(&finished)) {
-            // Another thread finished
+            // 종료된 flag가 바뀌면 현재 쓰레드 종료
             break;
         }
 
-        // Lock the mutex before changing block->nonce and hash
         calculateHash(block, nonce, hash);
 
         if (strncmp(hash, target, block->difficulty) == 0) {
-            // Lock the mutex before changing block->hash and finished
+            // block->hash 을 바꾸기 위해 Lock
             pthread_mutex_lock(&mutex);
             block->nonce = nonce;
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
             atomic_store(&finished, true);
+            // 변경 후 Unlock
             pthread_mutex_unlock(&mutex);
             break;
         }
@@ -93,23 +97,27 @@ void* performProofOfWorkThread(void* arg) {
     return NULL;
 }
 
+// Pow
 void performProofOfWork(Block* block) {
     pthread_t threads[NUM_THREADS];
     ThreadArg thread_args[NUM_THREADS];
 
-    // Split the nonce space evenly between threads
+    // 쓰레드의 개수만큼 범위 분할
     uint32_t nonce_range = UINT32_MAX / NUM_THREADS;
 
     for (int i = 0; i < NUM_THREADS; i++) {
+        // 쓰레드 arg Block 설정
         thread_args[i].block = block;
         thread_args[i].start_nonce = i * nonce_range;
         thread_args[i].end_nonce = (i + 1) * nonce_range;
+        // 쓰레드 생성
         if (pthread_create(&threads[i], NULL, performProofOfWorkThread, &thread_args[i]) != 0) {
             perror("Error creating thread");
             exit(1);
         }
     }
 
+    // 쓰레드 개수만큼 조인
     for (int i = 0; i < NUM_THREADS; i++) {
         if (pthread_join(threads[i], NULL) != 0) {
             perror("Error joining thread");
@@ -118,6 +126,8 @@ void performProofOfWork(Block* block) {
     }
 }
 
+
+// 블록 정보 출력
 void printBlockInfo(Block* block) {
     printf("Block Index: %u\n", block->index);
     printf("Timestamp: %lu\n", block->timestamp);

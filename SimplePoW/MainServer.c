@@ -6,13 +6,13 @@
 #include <unistd.h>
 #include <time.h>
 #include <openssl/sha.h>
-#include <pthread.h> // add this
+#include <pthread.h>
 
-#define DIFFICULTY 5
 #define SHA256_BLOCK_SIZE 32 
-#define TARGET_PREFIX_7 "0000000"
-#define TARGET_PREFIX_8 "00000000"
+#define TARGET_PREFIX_7 "0000000" // 챌린지 난이도 7
+#define TARGET_PREFIX_8 "00000000" // 챌린지 난이도 8
 
+// Block 구조체
 typedef struct {
     uint32_t index;
     uint64_t timestamp;
@@ -24,6 +24,7 @@ typedef struct {
     char targetPrefix[9];
 } Block;
 
+// 해시 계산
 void calculateHash(Block* block, char* hash) {
     char data[512]; 
     int dataSize = snprintf(data, sizeof(data), "%s%u", block->data, block->nonce);
@@ -43,6 +44,7 @@ void calculateHash(Block* block, char* hash) {
     hash[SHA256_BLOCK_SIZE * 2] = '\0';
 }
 
+// 블록 정보 출력
 void printBlockInfo(Block* block) {
     printf("Block Index: %u\n", block->index);
     printf("Timestamp: %lu\n", block->timestamp);
@@ -62,6 +64,7 @@ void* serverThread(void * data) {
     block.timestamp = time(NULL);
 
     int challenge, choice;
+    // 챌린지 난이도 선택 (7 or 8)
     printf("Challenge (7 or 8): ");
     scanf("%d", &challenge);
 
@@ -74,6 +77,7 @@ void* serverThread(void * data) {
         strcpy(block.targetPrefix, TARGET_PREFIX_7);
     }
 
+    // 챌린지 학번 또는 이름 선택 (1 or 2)
     printf("ID or Name (1 or 2): ");
     scanf("%d", &choice);
 
