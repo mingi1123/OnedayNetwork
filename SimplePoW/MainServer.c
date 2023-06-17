@@ -10,8 +10,8 @@
 
 #define DIFFICULTY 5
 #define SHA256_BLOCK_SIZE 32 
-#define TARGET_PREFIX_7 "0000000"
-#define TARGET_PREFIX_8 "00000000"
+#define TARGET_PREFIX_7 "00000"
+#define TARGET_PREFIX_8 "000000"
 
 typedef struct {
     uint32_t index;

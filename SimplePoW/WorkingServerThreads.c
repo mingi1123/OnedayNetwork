@@ -5,15 +5,21 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/time.h>
 #include <openssl/sha.h>
 #include <pthread.h>
+#include <stdbool.h>
+#include <stdatomic.h>
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 
 #define SHA256_BLOCK_SIZE 32 
 #define TARGET_PREFIX_MAX_LENGTH 9
-#define NUM_THREADS 4
+#define NUM_THREADS 12
+
+atomic_bool finished = false;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
     uint32_t index;
@@ -26,9 +32,9 @@ typedef struct {
     char targetPrefix[TARGET_PREFIX_MAX_LENGTH];
 } Block;
 
-void calculateHash(Block* block, char* hash) {
+void calculateHash(Block* block, uint32_t nonce, char* hash) {
     char data[512]; 
-    int dataSize = snprintf(data, sizeof(data), "%s%u", block->data, block->nonce);
+    int dataSize = snprintf(data, sizeof(data), "%s%u", block->data, nonce);
     if (dataSize < 0 || dataSize >= sizeof(data)) {
         fprintf(stderr, "Error: Buffer overflow.\n");
         exit(1);
@@ -65,10 +71,21 @@ void* performProofOfWorkThread(void* arg) {
     target[block->difficulty] = '\0';  // Set end of target string
 
     for (uint32_t nonce = start_nonce; nonce < end_nonce; nonce++) {
-        block->nonce = nonce;
-        calculateHash(block, hash);
+        if (atomic_load(&finished)) {
+            // Another thread finished
+            break;
+        }
+
+        // Lock the mutex before changing block->nonce and hash
+        calculateHash(block, nonce, hash);
+
         if (strncmp(hash, target, block->difficulty) == 0) {
+            // Lock the mutex before changing block->hash and finished
+            pthread_mutex_lock(&mutex);
+            block->nonce = nonce;
             strncpy(block->hash, hash, SHA256_BLOCK_SIZE * 2 + 1);
+            atomic_store(&finished, true);
+            pthread_mutex_unlock(&mutex);
             break;
         }
     }
